@@ -340,6 +340,69 @@ $diff_content
     echo "$ai_response"
 }
 
+# 提取JSON内容
+extract_json_from_response() {
+    local response="$1"
+    
+    # 尝试提取第一个完整的JSON对象
+    # 查找以{开始的行，然后提取到对应的}结束
+    local json_content
+    
+    # 方法1: 使用sed提取第一个完整的JSON对象
+    json_content=$(echo "$response" | sed -n '/^{/,/^}$/p' | head -n -0)
+    
+    # 如果方法1失败，尝试方法2: 查找包含"type"的JSON行
+    if [[ -z "$json_content" || ! "$json_content" =~ ^\{.*\}$ ]]; then
+        # 查找包含type、title、description的行，很可能是我们需要的JSON
+        json_content=$(echo "$response" | grep -E '^\{.*"type".*"title".*\}$' | head -1)
+    fi
+    
+    # 如果还是失败，尝试方法3: 提取任何看起来像JSON的内容
+    if [[ -z "$json_content" || ! "$json_content" =~ ^\{.*\}$ ]]; then
+        # 查找任何以{开始，以}结束，并包含引号的行
+        json_content=$(echo "$response" | grep -E '^\{.*\}$' | head -1)
+    fi
+    
+    # 如果还是失败，尝试方法4: 提取最后一个完整的JSON对象（兜底方案）
+    if [[ -z "$json_content" || ! "$json_content" =~ ^\{.*\}$ ]]; then
+        # 查找所有可能的JSON对象，取最后一个
+        json_content=$(echo "$response" | grep -E '^\s*\{.*\}\s*$' | tail -1 | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+    fi
+    
+    # 如果还是失败，尝试方法5: 从多行中构建JSON
+    if [[ -z "$json_content" || ! "$json_content" =~ ^\{.*\}$ ]]; then
+        # 查找{开始的行到}结束的行之间的所有内容
+        local start_line=$(echo "$response" | grep -n '^{' | head -1 | cut -d: -f1)
+        local end_line=$(echo "$response" | grep -n '^}' | head -1 | cut -d: -f1)
+        
+        if [[ -n "$start_line" && -n "$end_line" && "$start_line" -le "$end_line" ]]; then
+            json_content=$(echo "$response" | sed -n "${start_line},${end_line}p" | tr -d '\n' | tr -d '\r')
+        fi
+    fi
+    
+    # 如果还是失败，尝试方法6: 查找最后一个多行JSON对象
+    if [[ -z "$json_content" || ! "$json_content" =~ ^\{.*\}$ ]]; then
+        # 找到所有{的行号
+        local all_start_lines=($(echo "$response" | grep -n '{' | cut -d: -f1))
+        # 找到所有}的行号
+        local all_end_lines=($(echo "$response" | grep -n '}' | cut -d: -f1))
+        
+        # 从最后一个{开始，找到对应的}
+        if [[ ${#all_start_lines[@]} -gt 0 && ${#all_end_lines[@]} -gt 0 ]]; then
+            local last_start=${all_start_lines[-1]}
+            # 找到最后一个{之后的第一个}
+            for end_line in "${all_end_lines[@]}"; do
+                if [[ $end_line -ge $last_start ]]; then
+                    json_content=$(echo "$response" | sed -n "${last_start},${end_line}p" | tr -d '\n' | tr -d '\r')
+                    break
+                fi
+            done
+        fi
+    fi
+    
+    echo "$json_content"
+}
+
 # 解析commit消息JSON
 parse_commit_message() {
     local json_response="$1"
@@ -351,16 +414,32 @@ parse_commit_message() {
         echo
     fi
     
+    # 尝试提取JSON内容
+    local extracted_json
+    extracted_json=$(extract_json_from_response "$json_response")
+    
+    if [[ "$DEBUG" == "true" ]]; then
+        print_color "$PURPLE" "🐛 [DEBUG] 提取的JSON内容:"
+        echo "$extracted_json"
+        echo
+    fi
+    
+    # 如果提取到了JSON内容，使用提取的内容，否则使用原始响应
+    local json_to_parse="$json_response"
+    if [[ -n "$extracted_json" && "$extracted_json" =~ ^\{.*\}$ ]]; then
+        json_to_parse="$extracted_json"
+    fi
+    
     if command -v jq >/dev/null 2>&1; then
-        COMMIT_TYPE=$(echo "$json_response" | jq -r '.type // "feat"' 2>/dev/null)
-        COMMIT_TITLE=$(echo "$json_response" | jq -r '.title // "代码更新"' 2>/dev/null)
-        COMMIT_DESCRIPTION=$(echo "$json_response" | jq -r '.description // ""' 2>/dev/null)
+        COMMIT_TYPE=$(echo "$json_to_parse" | jq -r '.type // "feat"' 2>/dev/null)
+        COMMIT_TITLE=$(echo "$json_to_parse" | jq -r '.title // "代码更新"' 2>/dev/null)
+        COMMIT_DESCRIPTION=$(echo "$json_to_parse" | jq -r '.description // ""' 2>/dev/null)
         
         # 检查jq解析是否成功
         if [[ $? -ne 0 ]]; then
             if [[ "$DEBUG" == "true" ]]; then
                 print_color "$PURPLE" "🐛 [DEBUG] jq解析失败，尝试解析错误:"
-                echo "$json_response" | jq . 2>&1 || true
+                echo "$json_to_parse" | jq . 2>&1 || true
                 echo
             fi
             print_error "AI返回的JSON格式无效，无法解析commit消息"
@@ -368,9 +447,9 @@ parse_commit_message() {
         fi
     else
         # 简单的文本解析
-        COMMIT_TYPE=$(echo "$json_response" | grep -o '"type":"[^"]*"' | sed 's/"type":"//' | sed 's/"$//' || echo "feat")
-        COMMIT_TITLE=$(echo "$json_response" | grep -o '"title":"[^"]*"' | sed 's/"title":"//' | sed 's/"$//' || echo "代码更新")
-        COMMIT_DESCRIPTION=$(echo "$json_response" | grep -o '"description":"[^"]*"' | sed 's/"description":"//' | sed 's/"$//' || echo "")
+        COMMIT_TYPE=$(echo "$json_to_parse" | grep -o '"type":"[^"]*"' | sed 's/"type":"//' | sed 's/"$//' || echo "feat")
+        COMMIT_TITLE=$(echo "$json_to_parse" | grep -o '"title":"[^"]*"' | sed 's/"title":"//' | sed 's/"$//' || echo "代码更新")
+        COMMIT_DESCRIPTION=$(echo "$json_to_parse" | grep -o '"description":"[^"]*"' | sed 's/"description":"//' | sed 's/"$//' || echo "")
     fi
 }
 
