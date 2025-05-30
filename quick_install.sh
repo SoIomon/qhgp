@@ -80,21 +80,30 @@ else
     exit 1
 fi
 
-echo -e "${BLUE}📥 复制配置文件...${NC}"
+echo -e "${BLUE}📥 准备配置文件...${NC}"
 # 创建配置目录
 mkdir -p qhgp_config
 
-# 复制配置文件
-if [ -f "$REPO_DIR/qhgp_config/config.json" ]; then
-    cp "$REPO_DIR/qhgp_config/config.json" "qhgp_config/config.json"
-elif [ -f "$REPO_DIR/qhgp_config/config.example.json" ]; then
-    echo -e "${YELLOW}❌ 未找到配置文件${NC}"
-    echo -e "${BLUE}📝 未找到配置文件时，从config.example.json创建一个新的配置文件${NC}"
-    cp "$REPO_DIR/qhgp_config/config.example.json" "qhgp_config/config.json"
+# 检查用户是否已有配置文件
+USER_CONFIG_DIR="$HOME/.config/qhgp"
+if [ -f "$USER_CONFIG_DIR/config.json" ]; then
+    echo -e "${GREEN}✅ 检测到用户已有配置文件，将保留现有配置${NC}"
+    # 复制用户现有配置到临时目录，以便后续处理
+    cp "$USER_CONFIG_DIR/config.json" "qhgp_config/config.json"
 else
-    echo -e "${RED}❌ 未找到配置文件和示例配置文件${NC}"
-    rm -rf "$TEMP_DIR"
-    exit 1
+    # 用户没有配置文件，使用仓库中的配置
+    if [ -f "$REPO_DIR/qhgp_config/config.json" ]; then
+        cp "$REPO_DIR/qhgp_config/config.json" "qhgp_config/config.json"
+        echo -e "${BLUE}📝 使用仓库中的默认配置文件${NC}"
+    elif [ -f "$REPO_DIR/qhgp_config/config.example.json" ]; then
+        echo -e "${YELLOW}⚠️  未找到默认配置文件${NC}"
+        echo -e "${BLUE}📝 从config.example.json创建配置文件${NC}"
+        cp "$REPO_DIR/qhgp_config/config.example.json" "qhgp_config/config.json"
+    else
+        echo -e "${RED}❌ 未找到配置文件和示例配置文件${NC}"
+        rm -rf "$TEMP_DIR"
+        exit 1
+    fi
 fi
 
 echo -e "${BLUE}🚀 开始安装 qhgp 命令...${NC}"
@@ -110,9 +119,9 @@ mkdir -p "$CONFIG_DIR"
 # 复制配置文件
 if [ ! -f "$CONFIG_DIR/config.json" ]; then
     cp "qhgp_config/config.json" "$CONFIG_DIR/config.json"
-    echo -e "${GREEN}📝 已创建默认配置文件: $CONFIG_DIR/config.json${NC}"
+    echo -e "${GREEN}📝 已创建配置文件: $CONFIG_DIR/config.json${NC}"
 else
-    echo -e "${YELLOW}⚠️  配置文件已存在，跳过创建${NC}"
+    echo -e "${GREEN}✅ 配置文件已存在，保留用户现有配置${NC}"
 fi
 
 # 确保 ~/.local/bin 在 PATH 中
