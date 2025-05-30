@@ -40,6 +40,7 @@ DEFAULT_MAX_TOKENS="2000"
 AUTO_YES=false
 PUSH=false
 COMMAND=""
+DEBUG=false
 
 # 打印彩色文本
 print_color() {
@@ -177,6 +178,23 @@ chat_with_ai() {
         json_payload='{"model":"'$MODEL'","messages":[{"role":"user","content":"'$escaped_message'"}],"temperature":'$TEMPERATURE',"max_tokens":'$MAX_TOKENS'}'
     fi
     
+    # Debug输出
+    if [[ "$DEBUG" == "true" ]]; then
+        print_color "$PURPLE" "🐛 [DEBUG] API调用信息:"
+        echo "URL: $url"
+        echo "Model: $MODEL"
+        echo "Temperature: $TEMPERATURE"
+        echo "Max Tokens: $MAX_TOKENS"
+        echo "API Key: ${API_KEY:0:10}...(已隐藏)"
+        echo "JSON Payload长度: ${#json_payload} 字符"
+        print_color "$PURPLE" "🐛 [DEBUG] 执行的curl命令:"
+        echo "curl -s -X POST '$url' \\"
+        echo "  -H 'Content-Type: application/json' \\"
+        echo "  -H 'Authorization: Bearer ${API_KEY:0:10}...' \\"
+        echo "  -d '<JSON_PAYLOAD>'"
+        echo
+    fi
+    
     local response
     response=$(curl -s -X POST "$url" \
         -H "Content-Type: application/json" \
@@ -184,6 +202,21 @@ chat_with_ai() {
         -d "$json_payload" 2>/dev/null)
     
     local curl_exit_code=$?
+    
+    # Debug输出curl结果
+    if [[ "$DEBUG" == "true" ]]; then
+        print_color "$PURPLE" "🐛 [DEBUG] curl退出码: $curl_exit_code"
+        print_color "$PURPLE" "🐛 [DEBUG] API响应长度: ${#response} 字符"
+        if [[ ${#response} -gt 0 && ${#response} -lt 1000 ]]; then
+            print_color "$PURPLE" "🐛 [DEBUG] API响应内容:"
+            echo "$response"
+        elif [[ ${#response} -ge 1000 ]]; then
+            print_color "$PURPLE" "🐛 [DEBUG] API响应内容(前500字符):"
+            echo "${response:0:500}..."
+        fi
+        echo
+    fi
+    
     if [[ $curl_exit_code -ne 0 ]]; then
         print_error "调用AI API失败 (curl退出码: $curl_exit_code)"
         return 1
@@ -689,6 +722,7 @@ show_help() {
     printf "${YELLOW}可选参数:${NC}\n"
     printf "  ${GREEN}-y, --yes${NC}      自动确认使用生成的commit消息，无需手动确认\n"
     printf "  ${GREEN}-p, --push${NC}     提交后推送到远程仓库\n"
+    printf "  ${GREEN}--debug${NC}        启用调试模式，显示详细的API调用信息\n"
     printf "  ${GREEN}--version${NC}      显示版本信息\n"
     printf "  ${GREEN}-h, --help${NC}     显示此帮助信息\n\n"
     printf "${YELLOW}子命令:${NC}\n"
@@ -696,9 +730,10 @@ show_help() {
     printf "  ${GREEN}uninstall${NC}      卸载qhgp工具\n\n"
     printf "${CYAN}示例:${NC}\n"
     printf "  ${GREEN}qhgp${NC}              # 交互式确认commit消息后只提交（默认行为）\n"
-
+    printf "  ${GREEN}qhgp -y${NC}           # 自动确认commit消息并只提交\n"
     printf "  ${GREEN}qhgp -p${NC}           # 交互式确认commit消息后提交并推送\n"
-    printf "  ${GREEN}qhgp -yp${NC}          # 自动确认commit消息并推送（简写组合）\n\n"
+    printf "  ${GREEN}qhgp -yp${NC}          # 自动确认commit消息并推送（简写组合）\n"
+    printf "  ${GREEN}qhgp --debug${NC}      # 启用调试模式，查看详细的API调用信息\n\n"
 
     printf "  ${GREEN}qhgp update${NC}       # 更新qhgp工具到最新版本\n"
     printf "  ${GREEN}qhgp uninstall${NC}    # 卸载qhgp工具\n"
@@ -723,6 +758,10 @@ parse_args() {
                 ;;
             -p|--push)
                 PUSH=true
+                shift
+                ;;
+            --debug)
+                DEBUG=true
                 shift
                 ;;
             -yp)
