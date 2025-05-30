@@ -758,7 +758,7 @@ show_help() {
     printf "  ${GREEN}qhgp uninstall -y${NC} # 自动确认卸载\n\n"
     printf "${CYAN}配置文件:${NC}\n"
     printf "  qhgp 支持通过配置文件自定义模型和行为设置\n"
-    printf "  ${YELLOW}配置文件位置:${NC} ~/.config/qhgp/config.json\n\n"
+    printf "  ${YELLOW}配置文件位置:${NC} $CONFIG_FILE\n\n"
     printf "  ${YELLOW}主要配置项:${NC}\n"
     printf "  ${PURPLE}•${NC} ${WHITE}openai:${NC} API密钥、基础URL、模型名称等\n"
     printf "  ${PURPLE}•${NC} ${WHITE}commit_message:${NC} 语言、格式、描述等\n"
