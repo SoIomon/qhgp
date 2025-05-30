@@ -59,12 +59,13 @@ if ! command -v curl &> /dev/null; then
     exit 1
 fi
 
-# 检查jq（可选）
+# 检查jq（必选）
 if ! command -v jq &> /dev/null; then
-    echo -e "${YELLOW}⚠️  未找到 jq，建议安装以获得更好的JSON解析体验${NC}"
-    echo -e "${YELLOW}   macOS: brew install jq${NC}"
-    echo -e "${YELLOW}   Ubuntu/Debian: sudo apt-get install jq${NC}"
-    echo -e "${YELLOW}   CentOS/RHEL: sudo yum install jq${NC}"
+    echo -e "${RED}❌  未找到 jq，建议安装以获得更好的JSON解析体验${NC}"
+    echo -e "${RED}   macOS: brew install jq${NC}"
+    echo -e "${RED}   Ubuntu/Debian: sudo apt-get install jq${NC}"
+    echo -e "${RED}   CentOS/RHEL: sudo yum install jq${NC}"
+    exit 1
 else
     echo -e "${GREEN}✅ jq 已安装${NC}"
 fi
