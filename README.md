@@ -19,7 +19,7 @@
 - Git
 - Curl
 - Bash 4.0+
-- jq（可选，用于更好的JSON处理）
+- jq
 
 ### 安装
 
