@@ -151,9 +151,12 @@ chat_with_ai() {
     # 使用jq构建JSON payload以确保正确转义
     local json_payload
     if command -v jq >/dev/null 2>&1; then
+        # 使用临时文件避免参数列表过长
+        local temp_file=$(mktemp)
+        echo "$message" > "$temp_file"
         json_payload=$(jq -n \
             --arg model "$MODEL" \
-            --arg content "$message" \
+            --rawfile content "$temp_file" \
             --argjson temperature "$TEMPERATURE" \
             --argjson max_tokens "$MAX_TOKENS" \
             '{
@@ -162,6 +165,7 @@ chat_with_ai() {
                 "temperature": $temperature,
                 "max_tokens": $max_tokens
             }')
+        rm -f "$temp_file"
     else
         # 如果没有jq，使用简单的字符串替换（不够健壮）
         local escaped_message
@@ -255,6 +259,15 @@ generate_commit_message() {
     if [[ -z "$diff_content" ]]; then
         print_error "没有发现代码更改"
         return 1
+    fi
+    
+    # 限制diff内容长度，避免参数列表过长
+    local max_diff_length=10000
+    if [[ ${#diff_content} -gt $max_diff_length ]]; then
+        diff_content=$(echo "$diff_content" | head -c $max_diff_length)
+        diff_content="$diff_content
+
+[注意: diff内容过长，已截断显示前${max_diff_length}个字符]"
     fi
     
     # 构建提示词
