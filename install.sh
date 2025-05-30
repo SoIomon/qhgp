@@ -2,6 +2,10 @@
 
 # qhgp 安装脚本
 # 自动安装 qhgp 工具到用户的本地环境
+#
+# Copyright (c) 2024 qhgp
+# Licensed under the MIT License
+# See LICENSE file for details
 
 set -e
 

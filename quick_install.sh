@@ -1,6 +1,10 @@
 #!/bin/bash
 
 # 快速安装脚本 - 从GitHub直接安装qhgp
+#
+# Copyright (c) 2024 qhgp
+# Licensed under the MIT License
+# See LICENSE file for details
 
 set -e
 

@@ -2,6 +2,10 @@
 
 # qhgp - Git自动提交工具 (Bash版本)
 # 自动add、commit、push并生成commit消息
+#
+# Copyright (c) 2024 qhgp
+# Licensed under the MIT License
+# See LICENSE file for details
 
 set -e
 
