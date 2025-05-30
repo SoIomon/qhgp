@@ -125,7 +125,7 @@ $ qhgp -y
 
 #### 配置文件位置
 
-- 默认位置：`~/.local/bin/qhgp_config/config.json`
+- 默认位置：`<qhgp安装目录>/qhgp_config/config.json`
 - 工具会在首次运行时自动创建默认配置文件
 - 可以参考 `config.example.json` 了解配置格式
 
