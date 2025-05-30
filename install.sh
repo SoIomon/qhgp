@@ -61,7 +61,7 @@ fi
 
 # 检查jq（必选）
 if ! command -v jq &> /dev/null; then
-    echo -e "${RED}❌  未找到 jq，建议安装以获得更好的JSON解析体验${NC}"
+    echo -e "${RED}❌ 未找到 jq，建议安装以获得更好的JSON解析体验${NC}"
     echo -e "${RED}   macOS: brew install jq${NC}"
     echo -e "${RED}   Ubuntu/Debian: sudo apt-get install jq${NC}"
     echo -e "${RED}   CentOS/RHEL: sudo yum install jq${NC}"
