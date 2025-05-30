@@ -344,10 +344,28 @@ $diff_content
 parse_commit_message() {
     local json_response="$1"
     
+    # Debug输出AI返回的原始内容
+    if [[ "$DEBUG" == "true" ]]; then
+        print_color "$PURPLE" "🐛 [DEBUG] AI返回的原始响应内容:"
+        echo "$json_response"
+        echo
+    fi
+    
     if command -v jq >/dev/null 2>&1; then
-        COMMIT_TYPE=$(echo "$json_response" | jq -r '.type // "feat"')
-        COMMIT_TITLE=$(echo "$json_response" | jq -r '.title // "代码更新"')
-        COMMIT_DESCRIPTION=$(echo "$json_response" | jq -r '.description // ""')
+        COMMIT_TYPE=$(echo "$json_response" | jq -r '.type // "feat"' 2>/dev/null)
+        COMMIT_TITLE=$(echo "$json_response" | jq -r '.title // "代码更新"' 2>/dev/null)
+        COMMIT_DESCRIPTION=$(echo "$json_response" | jq -r '.description // ""' 2>/dev/null)
+        
+        # 检查jq解析是否成功
+        if [[ $? -ne 0 ]]; then
+            if [[ "$DEBUG" == "true" ]]; then
+                print_color "$PURPLE" "🐛 [DEBUG] jq解析失败，尝试解析错误:"
+                echo "$json_response" | jq . 2>&1 || true
+                echo
+            fi
+            print_error "AI返回的JSON格式无效，无法解析commit消息"
+            return 1
+        fi
     else
         # 简单的文本解析
         COMMIT_TYPE=$(echo "$json_response" | grep -o '"type":"[^"]*"' | sed 's/"type":"//' | sed 's/"$//' || echo "feat")
