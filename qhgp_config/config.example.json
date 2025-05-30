@@ -1,0 +1,20 @@
+{
+  "openai": {
+    "api_key": "your-api-key-here",
+    "base_url": "https://api.openai.com/v1",
+    "model": "gpt-3.5-turbo",
+    "temperature": 0.7,
+    "max_tokens": 2000
+  },
+  "commit_message": {
+    "language": "zh",
+    "format": "conventional",
+    "include_description": true,
+    "max_title_length": 50
+  },
+  "git": {
+    "auto_stage": true,
+    "auto_push": true,
+    "default_remote": "origin"
+  }
+}
